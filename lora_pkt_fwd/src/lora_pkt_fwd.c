@@ -144,6 +144,7 @@ static uint32_t net_mac_l; /* Least Significant Nibble, network order */
 /* network sockets */
 static int sock_up; /* socket for upstream traffic */
 static int sock_down; /* socket for downstream traffic */
+static int sock_local; /* socket for nitrodash traffic */
 
 /* network protocol variables */
 static struct timeval push_timeout_half = {0, (PUSH_TIMEOUT_MS * 500)}; /* cut in half, critical for throughput */
@@ -1190,6 +1191,38 @@ int main(void)
     }
     freeaddrinfo(result);
 
+    /* look for address for nitrodash */
+    i = getaddrinfo("localhost", "1681", &hints, &result);
+    if (i != 0) {
+	MSG("ERROR: [nitrodash] getaddrinfo on address localhost (port 1000) returned %s\n", gai_strerror(i));
+	exit(EXIT_FAILURE);
+    }
+
+    /* try to open socket for nitrodash traffic */
+    for (q=result; q!=NULL; q=q->ai_next) {
+        sock_local = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
+        if (sock_down == -1) continue; /* try next field */
+        else break; /* success, get out of loop */
+    }
+    if (q == NULL) {
+        MSG("ERROR: [nitrodash] failed to open socket\n");
+        i = 1;
+        for (q=result; q!=NULL; q=q->ai_next) {
+            getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
+            MSG("INFO: [nitrodash] result %i host:%s service:%s\n", i, host_name, port_name);
+            ++i;
+        }
+        exit(EXIT_FAILURE);
+    }
+
+    /* connect so we can send packet to nitrodash */
+    i = connect(sock_local, q->ai_addr, q->ai_addrlen);
+    if (i != 0) {
+        MSG("ERROR: [nitrodash] connect returned %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    freeaddrinfo(result);
+
     /* starting the concentrator */
     i = lgw_start();
     if (i == LGW_HAL_SUCCESS) {
@@ -1426,6 +1459,7 @@ int main(void)
         /* shut down network sockets */
         shutdown(sock_up, SHUT_RDWR);
         shutdown(sock_down, SHUT_RDWR);
+	shutdown(sock_local, SHUT_RDWR);
         /* stop the hardware */
         i = lgw_stop();
         if (i == LGW_HAL_SUCCESS) {
@@ -1845,6 +1879,9 @@ void thread_up(void) {
         buff_up[buff_index] = 0; /* add string terminator, for safety */
 
         printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
+
+	/* send datagram to nitrodash */
+	send(sock_local, (void *)buff_up, buff_index, 0);
 
         /* send datagram to server */
         send(sock_up, (void *)buff_up, buff_index, 0);
