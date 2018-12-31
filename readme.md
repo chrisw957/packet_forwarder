@@ -23,7 +23,7 @@ cd ~
 git clone https://github.com/chrisw957/packet_forwarder.git
 cd packet_forwarder
 make
-<pre>
+</pre>
 
 ## Install nitrodash
 Follow the readme here:
