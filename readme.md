@@ -15,7 +15,7 @@ cd ~
 git clone https://github.com/chrisw957/lora_gateway.git
 cd lora_gateway
 make
-<pre>
+</pre>
 
 ## Install packet_forwarder fork
 <pre>
