@@ -210,7 +210,13 @@
         /* forward only valid packets */
         "forward_crc_valid": true,
         "forward_crc_error": false,
-        "forward_crc_disabled": false
+        "forward_crc_disabled": false,
+        /* GPS configuration */
+        "gps_tty_path": "/dev/ttymxc3",
+        /* GPS reference coordinates */
+        "ref_latitude": 0.0,
+        "ref_longitude": 0.0,
+        "ref_altitude": 0
     }
 }
 
